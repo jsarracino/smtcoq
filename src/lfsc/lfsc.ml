@@ -335,14 +335,15 @@ let checker fsmt fproof =
 (* end *)
 
 let string_logic ro f =
-  let l = SL.union (Op.logic_ro ro) (Form.logic f) in
+  "ALL_SUPPORTED"
+  (* let l = SL.union (Op.logic_ro ro) (Form.logic f) in
   if SL.is_empty l then "QF_SAT"
   else
     sprintf "QF_%s%s%s%s"
     (if SL.mem LArrays l then "A" else "")
     (if SL.mem LUF l || SL.mem LLia l then "UF" else "")
     (if SL.mem LBitvectors l then "BV" else "")
-    (if SL.mem LLia l then "LIA" else "")
+    (if SL.mem LLia l then "LIA" else "") *)
 
 
 
@@ -500,3 +501,52 @@ let tactic_gen vm_cast =
    * SmtCommands.tactic call_cvc4 cvc4_logic rt ro ra rf ra rf vm_cast [] [] *)
 let tactic () = tactic_gen vm_cast_true
 let tactic_no_check () = tactic_gen (fun _ -> vm_cast_true_no_check)
+
+
+let call_cvc4_uncheck env rt ro ra rf root _ =
+  let open Smtlib2_solver in
+  let fl = snd root in
+
+  let cvc4 = create [|
+      "cvc4";
+      "--lang"; "smt2" |] in
+
+  set_option cvc4 "print-success" true;
+  set_option cvc4 "produce-assignments" true;
+  set_logic cvc4 (string_logic ro fl);
+
+  List.iter (fun (i,t) ->
+    let s = "Tindex_"^(string_of_int i) in
+    SmtMaps.add_btype s (SmtBtype.Tindex t);
+    declare_sort cvc4 s 0;
+  ) (SmtBtype.to_list rt);
+  
+  List.iter (fun (i,cod,dom,op) ->
+    let s = "op_"^(string_of_int i) in
+    SmtMaps.add_fun s op;
+    let args =
+      Array.fold_right
+        (fun t acc -> asprintf "%a" SmtBtype.to_smt t :: acc) cod [] in
+    let ret = asprintf "%a" SmtBtype.to_smt dom in
+    declare_fun cvc4 s args ret
+  ) (Op.to_list ro);
+
+  assume cvc4 (asprintf "%a" (Form.to_smt ~debug:false) fl);
+
+  let ret = check_sat cvc4 in 
+  quit cvc4;
+  ret
+
+let tactic_gen_uncheck vm_cast =
+  clear_all ();
+  let rt = SmtBtype.create () in
+  let ro = Op.create () in
+  let ra = Tosmtcoq.ra in
+  let rf = Tosmtcoq.rf in
+  let ra' = Tosmtcoq.ra in
+  let rf' = Tosmtcoq.rf in
+  SmtCommands.tactic_uncheck call_cvc4_uncheck cvc4_logic rt ro ra rf ra' rf' vm_cast [] []
+  (* (\* Currently, quantifiers are not handled by the cvc4 tactic: we pass
+   *    the same ra and rf twice to have everything reifed *\)
+   * SmtCommands.tactic call_cvc4 cvc4_logic rt ro ra rf ra rf vm_cast [] [] *)
+let tactic_uncheck () = tactic_gen_uncheck vm_cast_true

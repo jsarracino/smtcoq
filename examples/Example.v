@@ -30,12 +30,6 @@ Local Open Scope farray_scope.
 
 Local Open Scope int63_scope.
 
-Zchaff_Checker "sat.cnf" "sat.log".
-Zchaff_Theorem sat "sat.cnf" "sat.log".
-Check sat.
-
-Zchaff_Checker "hole4.cnf" "hole4.log".
-
 
 (* Example that checks a VeriT certificate, for logic QF_UFLIA *)
 
@@ -174,7 +168,8 @@ End mult3.
 
 Goal forall a b c, ((a || b || c) && ((negb a) || (negb b) || (negb c)) && ((negb a) || b) && ((negb b) || c) && ((negb c) || a)) = false.
 Proof.
-  smt.
+  prop2bool.
+  cvc4.
 Qed.
 
 Goal forall (a b : Z) (P : Z -> bool) (f : Z -> Z),

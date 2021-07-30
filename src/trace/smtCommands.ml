@@ -675,6 +675,9 @@ let get_arguments concl =
 let make_proof call_solver env rt ro ra_quant rf_quant l ls_smtc =
   let root = SmtTrace.mkRootV [l] in
   call_solver env rt ro ra_quant rf_quant (root,l) ls_smtc
+let make_proof_uncheck call_solver env rt ro ra_quant rf_quant l ls_smtc =
+    let root = SmtTrace.mkRootV [l] in
+    call_solver env rt ro ra_quant rf_quant (root,l) ls_smtc
 (* TODO: not generic anymore, the "lemma" part is currently specific to veriT *)
 
 (* <of_coq_lemma> reifies the given coq lemma, so we can then easily print it in a
@@ -806,6 +809,60 @@ let tactic call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl l
   CoqInterface.tclTHEN
     Tactics.intros
     (CoqInterface.mk_tactic (core_tactic call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl))
+
+let core_tactic_uncheck call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl env sigma concl =
+  let a, b = get_arguments concl in
+
+  let tlcepl = List.map (CoqInterface.interp_constr env sigma) lcepl in
+  let lcpl = lcpl @ tlcepl in
+
+  let create_lemma l =
+    let cl = CoqInterface.retyping_get_type_of env sigma l in
+    match of_coq_lemma rt ro ra_quant rf_quant env sigma solver_logic cl with
+      | Some smt -> Some ((cl, l), smt)
+      | None -> None
+  in
+  let l_pl_ls = SmtMisc.filter_map create_lemma lcpl in
+  let lsmt = List.map snd l_pl_ls in
+
+  let lem_tbl : (int, CoqInterface.constr * CoqInterface.constr) Hashtbl.t =
+    Hashtbl.create 100 in
+  let new_ref ((l, pl), ls) =
+    Hashtbl.add lem_tbl (Form.index ls) (l, pl) in
+
+  List.iter new_ref l_pl_ls;
+
+  (* let (body_cast, body_nocast, cuts) = *)
+  let smt_res = 
+    if ((CoqInterface.eq_constr b (Lazy.force ctrue)) ||
+        (CoqInterface.eq_constr b (Lazy.force cfalse))) then (
+      let l = Form.of_coq (Atom.of_coq rt ro ra solver_logic env sigma) rf a in
+      let _ = Form.of_coq (Atom.of_coq ~eqsym:true rt ro ra_quant solver_logic env sigma) rf_quant a in
+      let nl = if (CoqInterface.eq_constr b (Lazy.force ctrue)) then Form.neg l else l in
+      let lsmt = Form.flatten rf nl :: lsmt in
+      make_proof_uncheck call_solver env rt ro ra_quant rf_quant nl lsmt
+     
+    ) else (
+      let l1 = Form.of_coq (Atom.of_coq rt ro ra solver_logic env sigma) rf a in
+      let _ = Form.of_coq (Atom.of_coq ~eqsym:true rt ro ra_quant solver_logic env sigma) rf_quant a in
+      let l2 = Form.of_coq (Atom.of_coq rt ro ra solver_logic env sigma) rf b in
+      let _ = Form.of_coq (Atom.of_coq ~eqsym:true rt ro ra_quant solver_logic env sigma) rf_quant b in
+      let l = Form.get rf (Fapp(Fiff,[|l1;l2|])) in
+      let nl = Form.neg l in
+      let lsmt = Form.flatten rf nl :: lsmt in
+      make_proof_uncheck call_solver env rt ro ra_quant rf_quant nl lsmt
+    ) in
+
+    let open Smtlib2_solver in 
+
+    match smt_res with 
+    | Sat -> CoqInterface.error "SMT solver returned unsat"
+    | Unsat -> Tacticals.New.tclIDTAC
+
+let tactic_uncheck call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl =
+  CoqInterface.tclTHEN
+    Tactics.intros
+    (CoqInterface.mk_tactic (core_tactic_uncheck call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl))
 
 
 (**********************************************)

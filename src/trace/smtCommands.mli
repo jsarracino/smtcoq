@@ -60,4 +60,23 @@ val tactic :
   CoqInterface.constr list ->
   CoqInterface.constr_expr list -> CoqInterface.tactic
 
+val tactic_uncheck :
+  (Environ.env ->
+   SmtBtype.reify_tbl ->
+   SmtAtom.Op.reify_tbl ->
+   SmtAtom.Atom.reify_tbl ->
+   SmtAtom.Form.reify ->
+   (SmtAtom.Form.t SmtCertif.clause * SmtAtom.Form.t) ->
+   SmtAtom.Form.t list -> Smtlib2_solver.result) ->
+  SmtMisc.logic ->
+  SmtBtype.reify_tbl ->
+  SmtAtom.Op.reify_tbl ->
+  SmtAtom.Atom.reify_tbl ->
+  SmtAtom.Form.reify ->
+  SmtAtom.Atom.reify_tbl ->
+  SmtAtom.Form.reify ->
+  (Environ.env -> CoqInterface.constr -> CoqInterface.constr) ->
+  CoqInterface.constr list ->
+  CoqInterface.constr_expr list -> CoqInterface.tactic
+
 val model_string : Environ.env -> SmtBtype.reify_tbl -> 'a -> 'b -> 'c -> SExpr.t -> string
