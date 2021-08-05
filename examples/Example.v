@@ -26,10 +26,17 @@ Local Open Scope bv_scope.
 Import FArray.
 Local Open Scope farray_scope.
 
-(* Examples that check ZChaff certificates *)
+(* Local Open Scope int63_scope. *)
+Local Open Scope Z_scope.
 
-Local Open Scope int63_scope.
+Require Import Setoid.
 
+Goal forall (b b': bitvector 2),
+    (forall b'': bitvector 2, b'' = #b|0|0|) ->
+    b = b'.
+Proof.
+  smt_uncheck; admit.
+Admitted.
 
 (* Example that checks a VeriT certificate, for logic QF_UFLIA *)
 

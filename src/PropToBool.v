@@ -12,6 +12,7 @@
 
 Require Import
         Bool ZArith BVList Logic BVList FArray
+        Setoid
         SMT_classes SMT_classes_instances ReflectFacts.
 Import BVList.BITVECTOR_LIST.
 
@@ -24,6 +25,64 @@ Qed.
 Ltac prop2bool :=
   repeat
     match goal with
+
+    | [ |- context[ bv_ultP _ _ ] ] => setoid_rewrite <- bv_ult_B2P
+    | [ |- context[ bv_sltP _ _ ] ] => setoid_rewrite <- bv_slt_B2P
+    | [ |- context[ Z.lt _ _ ] ] => setoid_rewrite <- Z.ltb_lt
+    | [ |- context[ Z.gt _ _ ] ] => setoid_rewrite Zgt_is_gt_bool
+    | [ |- context[ Z.le _ _ ] ] => setoid_rewrite <- Z.leb_le
+    | [ |- context[ Z.ge _ _ ] ] => setoid_rewrite <- geb_ge
+    | [ |- context[ Z.eq _ _ ] ] => setoid_rewrite <- Z.eqb_eq
+
+    | [ |- context[ @Logic.eq ?t ?x ?y ] ] =>
+      lazymatch t with
+      | bitvector _ => setoid_rewrite <- bv_eq_reflect
+      | farray _ _ => setoid_rewrite <- equal_iff_eq
+      | Z => setoid_rewrite <- Z.eqb_eq
+      | bool =>
+        lazymatch y with
+        | true => fail
+        | _ => setoid_rewrite <- eqb_true_iff
+        end
+      | _ =>
+        lazymatch goal with
+        | [ p: (CompDec t) |- _ ] =>
+          setoid_rewrite (@compdec_eq_eqb _ p)
+        | _ =>
+          let p := fresh "p" in
+          assert (p:CompDec t);
+          [ auto with typeclass_instances
+          | setoid_rewrite (@compdec_eq_eqb _ p)
+          ]
+        end
+      end
+
+    | [ |- context[?G0 = true \/ ?G1 = true ] ] =>
+      setoid_rewrite (@reflect_iff (G0 = true \/ G1 = true) (orb G0 G1));
+      [ | apply orP]
+
+    | [ |- context[?G0 = true -> ?G1 = true ] ] =>
+      setoid_rewrite (@reflect_iff (G0 = true -> G1 = true) (implb G0 G1)); 
+      [ | apply implyP]
+
+    | [ |- context[?G0 = true /\ ?G1 = true ] ] =>
+      setoid_rewrite (@reflect_iff (G0 = true /\ G1 = true) (andb G0 G1));
+      [ | apply andP]
+
+    | [ |- context[?G0 = true <-> ?G1 = true ] ] =>
+      setoid_rewrite (@reflect_iff (G0 = true <-> G1 = true) (Bool.eqb G0 G1));
+      [ | apply iffP]
+          
+    | [ |- context[ ~ ?G = true ] ] =>
+      setoid_rewrite (@reflect_iff (~ G = true) (negb G));
+      [ | apply negP]
+
+    | [ |- context[ is_true ?G ] ] =>
+      unfold is_true
+
+    | [ |- context[ True ] ] => setoid_rewrite <- TrueB
+
+    | [ |- context[ False ] ] => setoid_rewrite <- FalseB
     | [ |- forall _ : ?t, _ ] =>
       lazymatch type of t with
       | Prop =>
@@ -33,64 +92,6 @@ Ltac prop2bool :=
         end
       | _ => intro
       end
-
-    | [ |- context[ bv_ultP _ _ ] ] => rewrite <- bv_ult_B2P
-    | [ |- context[ bv_sltP _ _ ] ] => rewrite <- bv_slt_B2P
-    | [ |- context[ Z.lt _ _ ] ] => rewrite <- Z.ltb_lt
-    | [ |- context[ Z.gt _ _ ] ] => rewrite Zgt_is_gt_bool
-    | [ |- context[ Z.le _ _ ] ] => rewrite <- Z.leb_le
-    | [ |- context[ Z.ge _ _ ] ] => rewrite <- geb_ge
-    | [ |- context[ Z.eq _ _ ] ] => rewrite <- Z.eqb_eq
-
-    | [ |- context[ @Logic.eq ?t ?x ?y ] ] =>
-      lazymatch t with
-      | bitvector _ => rewrite <- bv_eq_reflect
-      | farray _ _ => rewrite <- equal_iff_eq
-      | Z => rewrite <- Z.eqb_eq
-      | bool =>
-        lazymatch y with
-        | true => fail
-        | _ => rewrite <- eqb_true_iff
-        end
-      | _ =>
-        lazymatch goal with
-        | [ p: (CompDec t) |- _ ] =>
-          rewrite (@compdec_eq_eqb _ p)
-        | _ =>
-          let p := fresh "p" in
-          assert (p:CompDec t);
-          [ auto with typeclass_instances
-          | rewrite (@compdec_eq_eqb _ p)
-          ]
-        end
-      end
-
-    | [ |- context[?G0 = true \/ ?G1 = true ] ] =>
-      rewrite (@reflect_iff (G0 = true \/ G1 = true) (orb G0 G1));
-      [ | apply orP]
-
-    | [ |- context[?G0 = true -> ?G1 = true ] ] =>
-      rewrite (@reflect_iff (G0 = true -> G1 = true) (implb G0 G1)); 
-      [ | apply implyP]
-
-    | [ |- context[?G0 = true /\ ?G1 = true ] ] =>
-      rewrite (@reflect_iff (G0 = true /\ G1 = true) (andb G0 G1));
-      [ | apply andP]
-
-    | [ |- context[?G0 = true <-> ?G1 = true ] ] =>
-      rewrite (@reflect_iff (G0 = true <-> G1 = true) (Bool.eqb G0 G1));
-      [ | apply iffP]
-          
-    | [ |- context[ ~ ?G = true ] ] =>
-      rewrite (@reflect_iff (~ G = true) (negb G));
-      [ | apply negP]
-
-    | [ |- context[ is_true ?G ] ] =>
-      unfold is_true
-
-    | [ |- context[ True ] ] => rewrite <- TrueB
-
-    | [ |- context[ False ] ] => rewrite <- FalseB
     end.
 
 
@@ -103,41 +104,41 @@ Ltac bool2prop_true :=
       | _ => intro
       end
 
-    | [ |- context[ bv_ult _ _ = true ] ] => rewrite bv_ult_B2P
-    | [ |- context[ bv_slt _ _ = true ] ] => rewrite bv_slt_B2P
-    | [ |- context[ Z.ltb _ _ = true ] ] => rewrite Z.ltb_lt
-    | [ |- context[ Z.gtb _ _ ] ] => rewrite <- Zgt_is_gt_bool
-    | [ |- context[ Z.leb _ _ = true ] ] => rewrite Z.leb_le
-    | [ |- context[ Z.geb _ _ ] ] => rewrite geb_ge
-    | [ |- context[ Z.eqb _ _ = true ] ] => rewrite Z.eqb_eq
+    | [ |- context[ bv_ult _ _ = true ] ] => setoid_rewrite bv_ult_B2P
+    | [ |- context[ bv_slt _ _ = true ] ] => setoid_rewrite bv_slt_B2P
+    | [ |- context[ Z.ltb _ _ = true ] ] => setoid_rewrite Z.ltb_lt
+    | [ |- context[ Z.gtb _ _ ] ] => setoid_rewrite <- Zgt_is_gt_bool
+    | [ |- context[ Z.leb _ _ = true ] ] => setoid_rewrite Z.leb_le
+    | [ |- context[ Z.geb _ _ ] ] => setoid_rewrite geb_ge
+    | [ |- context[ Z.eqb _ _ = true ] ] => setoid_rewrite Z.eqb_eq
 
-    |  [ |- context[ Bool.eqb _ _ = true ] ] => rewrite eqb_true_iff
+    |  [ |- context[ Bool.eqb _ _ = true ] ] => setoid_rewrite eqb_true_iff
 
-    | [ |- context[ eqb_of_compdec ?p _ _ = true ] ] => rewrite <- (@compdec_eq_eqb _ p)
+    | [ |- context[ eqb_of_compdec ?p _ _ = true ] ] => setoid_rewrite <- (@compdec_eq_eqb _ p)
 
     | [ |- context[ ?G0 || ?G1 = true ] ] =>
-      rewrite <- (@reflect_iff (G0 = true \/ G1 = true) (orb G0 G1));
+      setoid_rewrite <- (@reflect_iff (G0 = true \/ G1 = true) (orb G0 G1));
       [ | apply orP]
 
     | [ |- context[ implb ?G0 ?G1 = true ] ] =>
-      rewrite <- (@reflect_iff (G0 = true -> G1 = true) (implb G0 G1));
+      setoid_rewrite <- (@reflect_iff (G0 = true -> G1 = true) (implb G0 G1));
       [ | apply implyP]
 
     | [ |- context[?G0 && ?G1 = true ] ] =>
-      rewrite <- (@reflect_iff (G0 = true /\ G1 = true) (andb G0 G1));
+      setoid_rewrite <- (@reflect_iff (G0 = true /\ G1 = true) (andb G0 G1));
       [ | apply andP]
 
     | [ |- context[Bool.eqb ?G0 ?G1 = true ] ] =>
-      rewrite <- (@reflect_iff (G0 = true <-> G1 = true) (Bool.eqb G0 G1));
+      setoid_rewrite <- (@reflect_iff (G0 = true <-> G1 = true) (Bool.eqb G0 G1));
       [ | apply iffP]
 
     | [ |- context[ negb ?G = true ] ] =>
-      rewrite <- (@reflect_iff (~ G = true) (negb G));
+      setoid_rewrite <- (@reflect_iff (~ G = true) (negb G));
       [ | apply negP]
 
-    | [ |- context[ true = true ] ] => rewrite TrueB
+    | [ |- context[ true = true ] ] => setoid_rewrite TrueB
 
-    | [ |- context[ false = true ] ] => rewrite FalseB
+    | [ |- context[ false = true ] ] => setoid_rewrite FalseB
     end.
 
 Ltac bool2prop := unfold is_true; bool2prop_true.
