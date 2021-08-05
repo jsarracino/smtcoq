@@ -23,6 +23,8 @@ module type ATOM =
 
     val equal : t -> t -> bool
 
+    val pp_atom : t -> string
+
     val is_bool_type : t -> bool
     val is_bv_type : t -> bool
     val to_smt : Format.formatter -> t -> unit
@@ -68,6 +70,8 @@ module type FORM =
     val is_pos : t -> bool
     val is_neg : t -> bool
 
+    val pp_pf : pform -> string
+
     val to_smt : ?debug:bool ->
                  Format.formatter -> t -> unit
 
@@ -75,6 +79,7 @@ module type FORM =
 
     (* Building formula from positive formula *)
     exception NotWellTyped of pform
+    exception Internal of string
     type reify
     val create : unit -> reify
     val clear : reify -> unit
@@ -158,6 +163,11 @@ module Make (Atom:ATOM) =
       | Neg _ -> true
       | _ -> false
 
+    let pp_pf pf = 
+      match pf with 
+      | Fatom ha -> "FAtom" ^ Atom.pp_atom ha
+      | _ -> ""
+
     let pform = function
       | Pos hp -> hp.hval
       | Neg hp -> hp.hval
@@ -175,7 +185,8 @@ module Make (Atom:ATOM) =
 
     and to_smt_pform fmt = function
       | Fatom a -> Atom.to_smt fmt a
-      | Fapp (op,args) -> to_smt_op fmt op args
+      | Fapp (op,args) -> 
+        to_smt_op fmt op args
       (* This is an intermediate object of proofs, it correspond to nothing in SMT *)
       | FbbT (a, l) ->
         Format.fprintf fmt "(bbT %a [" Atom.to_smt a;
@@ -292,10 +303,12 @@ module Make (Atom:ATOM) =
       }
 
     exception NotWellTyped of pform
+    exception Internal of string
 
     let check pf =
       match pf with
-      | Fatom ha ->  if not (Atom.is_bool_type ha) then
+      (* | Fatom ha ->  if not (Atom.is_bool_type ha) then *)
+      | Fatom ha ->  if not (Atom.is_bool_type ha || Atom.is_bv_type ha) then
           raise (Format.eprintf "nwt: %a" to_smt_pform pf;
                  NotWellTyped pf)
       | Fapp (op, args) ->
@@ -330,6 +343,7 @@ module Make (Atom:ATOM) =
       check pf;
       let res = Pos {index = reify.count; hval = pf} in
       HashForm.add reify.tbl pf res;
+      (* check pf; *)
       reify.count <- reify.count + 1;
       res
 
@@ -419,9 +433,14 @@ module Make (Atom:ATOM) =
                   get reify (Fapp (Fite, [|l1;l2;l3|]))
                | _ -> CoqInterface.error "SmtForm.Form.of_coq: wrong number of arguments for ifb"
              end
-          | _ ->
+          | CCunknown ->
+             
              let a = atom_of_coq h in
-             get reify (Fatom a)
+             (* raise (Internal "foo") *)
+             let ret = get reify (Fatom a) in
+             (* raise (Internal "foo") *)
+             ret
+             (* get reify (Fatom a) *)
 
       and op2 f args =
         match args with

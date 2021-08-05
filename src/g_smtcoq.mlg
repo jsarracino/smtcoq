@@ -120,5 +120,5 @@ END
 TACTIC EXTEND Tactic_cvc4
 | [ "cvc4_bool" ] -> { Lfsc.tactic () }
 | [ "cvc4_bool_no_check" ] -> { Lfsc.tactic_no_check () }
-| [ "cvc4_uncheck" ] -> { Lfsc.tactic_uncheck () }
+| [ "cvc4_uncheck" constr(lpl) ] -> { Lfsc.tactic_uncheck lpl (get_lemmas ()) }
 END

@@ -20,6 +20,8 @@ module type ATOM =
 
     val equal : t -> t -> bool
 
+    val pp_atom : t -> string
+
     val is_bool_type : t -> bool
     val is_bv_type : t -> bool
     val to_smt : Format.formatter -> t -> unit
@@ -64,6 +66,8 @@ module type FORM =
       val is_pos : t -> bool
       val is_neg : t -> bool
 
+      val pp_pf : pform -> string
+
       val to_smt : ?debug:bool ->
                    Format.formatter -> t -> unit
 
@@ -71,6 +75,7 @@ module type FORM =
 
       (* Building formula from positive formula *)
       exception NotWellTyped of pform
+      exception Internal of string
       type reify
       val create : unit -> reify
       val clear : reify -> unit

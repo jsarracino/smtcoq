@@ -21,6 +21,7 @@ type t = {
   stdout : Unix.file_descr;
   stderr : Unix.file_descr;
   lexbuf : Lexing.lexbuf;
+  debug_fd: Unix.file_descr;
 }
 
 
@@ -31,6 +32,8 @@ let create cmd =
   let stdin_in, stdin_out = Unix.pipe () in
   let stdout_in, stdout_out = Unix.pipe () in 
   let stderr_in, stderr_out = Unix.pipe () in 
+
+  let debug_fd = Unix.openfile "smt_debug.smt2" [Unix.O_CREAT; Unix.O_RDWR] 022 in 
 
   (* Create solver process *)
   let pid = 
@@ -55,7 +58,7 @@ let create cmd =
 
   (* Create the solver instance *)
   { cmd; pid;
-    stdin = stdin_out; stdout = stdout_in; stderr = stderr_in; lexbuf }
+    stdin = stdin_out; stdout = stdout_in; stderr = stderr_in; lexbuf; debug_fd }
 
 
 let kill s =
@@ -63,6 +66,7 @@ let kill s =
     Unix.close s.stdin;
     Unix.close s.stdout;
     Unix.close s.stderr;
+    Unix.close s.debug_fd;
     Unix.kill s.pid Sys.sigkill;
   with _ -> ()
 
@@ -99,6 +103,9 @@ let send_command s cmd read =
   try
     let in_ch = Unix.out_channel_of_descr s.stdin in
     let fmt = formatter_of_out_channel in_ch in
+    pp_print_string fmt cmd;
+    pp_print_newline fmt ();
+    let fmt = formatter_of_out_channel (Unix.out_channel_of_descr s.debug_fd) in
     pp_print_string fmt cmd;
     pp_print_newline fmt ();
     read s

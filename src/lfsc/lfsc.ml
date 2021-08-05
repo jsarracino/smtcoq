@@ -488,6 +488,8 @@ let cvc4_logic =
 
 
 let tactic_gen vm_cast =
+  
+
   clear_all ();
   let rt = SmtBtype.create () in
   let ro = Op.create () in
@@ -503,7 +505,22 @@ let tactic () = tactic_gen vm_cast_true
 let tactic_no_check () = tactic_gen (fun _ -> vm_cast_true_no_check)
 
 
-let call_cvc4_uncheck env rt ro ra rf root _ =
+let call_cvc4_uncheck env rt ro ra rf root lsmt =
+  let out_channel = open_out "smt_debug.out" in 
+  let fmt = Format.formatter_of_out_channel out_channel in
+
+  List.iter (fun u -> 
+    Format.fprintf fmt "(assert ";
+    Form.to_smt fmt u;
+    Format.fprintf fmt ")\n") lsmt;
+
+  Format.fprintf fmt "(assert ";
+  Form.to_smt fmt (snd root);
+  Format.fprintf fmt ")\n";
+
+  close_out out_channel;
+
+
   let open Smtlib2_solver in
   let fl = snd root in
 
@@ -531,22 +548,37 @@ let call_cvc4_uncheck env rt ro ra rf root _ =
     declare_fun cvc4 s args ret
   ) (Op.to_list ro);
 
-  assume cvc4 (asprintf "%a" (Form.to_smt ~debug:false) fl);
+
+  List.iter (fun x -> assume cvc4 (asprintf "%a" (Form.to_smt ~debug:false) x)) lsmt; 
+
+  
+
+  (* assume cvc4 (asprintf "%a" (Form.to_smt ~debug:false) fl); *)
 
   let ret = check_sat cvc4 in 
   quit cvc4;
   ret
 
-let tactic_gen_uncheck vm_cast =
+let tactic_gen_uncheck vm_cast lcpl lcepl =
+
+  let lcpl =
+    let lcpl = EConstr.Unsafe.to_constr lcpl in
+    let lcpl = CoqTerms.option_of_constr_option lcpl in
+    match lcpl with
+      | Some lcpl -> CoqTerms.list_of_constr_tuple lcpl
+      | None -> []
+  in
+
   clear_all ();
   let rt = SmtBtype.create () in
   let ro = Op.create () in
   let ra = Tosmtcoq.ra in
   let rf = Tosmtcoq.rf in
-  let ra' = Tosmtcoq.ra in
-  let rf' = Tosmtcoq.rf in
-  SmtCommands.tactic_uncheck call_cvc4_uncheck cvc4_logic rt ro ra rf ra' rf' vm_cast [] []
+  let ra_quant = Tosmtcoq.ra_quant in
+  let rf_quant = Tosmtcoq.rf_quant in
+  SmtCommands.tactic_uncheck call_cvc4_uncheck cvc4_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl
   (* (\* Currently, quantifiers are not handled by the cvc4 tactic: we pass
    *    the same ra and rf twice to have everything reifed *\)
    * SmtCommands.tactic call_cvc4 cvc4_logic rt ro ra rf ra rf vm_cast [] [] *)
-let tactic_uncheck () = tactic_gen_uncheck vm_cast_true
+let tactic_uncheck : EConstr.t -> CoqInterface.constr_expr list -> CoqInterface.tactic = fun x y -> tactic_gen_uncheck vm_cast_true x y
+

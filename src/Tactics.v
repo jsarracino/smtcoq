@@ -150,7 +150,31 @@ Ltac cvc4_no_check   := prop2bool; [ .. | cvc4_bool_no_check; bool2prop ].
 
 Tactic Notation "smt" constr(h) := (prop2bool; [ .. | try verit h; cvc4_bool; try verit h; bool2prop ]).
 Tactic Notation "smt"           := (prop2bool; [ .. | try verit  ; cvc4_bool; try verit  ; bool2prop ]).
-Tactic Notation "smt_uncheck"   := (prop2bool; cvc4_uncheck).
+
+Tactic Notation "smt_uncheck" constr(h) :=
+  prop2bool;
+  [ .. | prop2bool_hyps h;
+         [ .. | let Hs := get_hyps in
+                match Hs with
+                | Some ?Hs =>
+                  prop2bool_hyps Hs;
+                  [ .. | cvc4_uncheck (Some (h, Hs)) ]
+                | None => cvc4_uncheck (Some h)
+                end
+         ]
+  ].
+Tactic Notation "smt_uncheck"           :=
+  prop2bool;
+  [ .. | let Hs := get_hyps in
+         match Hs with
+         | Some ?Hs =>
+           prop2bool_hyps Hs;
+           [ .. | cvc4_uncheck (Some Hs) ]
+         | None => cvc4_uncheck (@None nat)
+         end
+  ].
+
+
 Tactic Notation "smt_no_check" constr(h) := (prop2bool; [ .. | try verit_no_check h; cvc4_bool_no_check; try verit_no_check h; bool2prop]).
 Tactic Notation "smt_no_check"           := (prop2bool; [ .. | try verit_no_check  ; cvc4_bool_no_check; try verit_no_check  ; bool2prop]).
 

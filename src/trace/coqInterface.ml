@@ -37,7 +37,14 @@ let isRel = Constr.isRel
 let destRel = Constr.destRel
 let lift = Vars.lift
 let mkApp = Constr.mkApp
-let decompose_app = Constr.decompose_app
+let decompose_app c = 
+  try Constr.decompose_app c
+  with | e -> 
+    let out_channel = open_out "warning.out" in 
+    let fmt = Format.formatter_of_out_channel out_channel in
+    Format.fprintf fmt "could not decompose app\n";
+    close_out out_channel;
+    raise e
 let mkLambda (n, t, c) = Constr.mkLambda (Context.make_annot n Sorts.Relevant, t, c)
 let mkProd (n, t, c) = Constr.mkProd (Context.make_annot n Sorts.Relevant, t, c)
 let mkLetIn (n, c1, t, c2) = Constr.mkLetIn (Context.make_annot n Sorts.Relevant, c1, t, c2)
@@ -182,7 +189,12 @@ let set_evars_tac noc =
 (* Other differences between the two versions of Coq *)
 type constr_expr = Constrexpr.constr_expr
 let error s = CErrors.user_err (Pp.str s)
-let warning n s = CWarnings.create ~name:n ~category:"SMTCoq plugin" Pp.str s
+let warning n s = 
+  let out_channel = open_out "warning.out" in 
+  let fmt = Format.formatter_of_out_channel out_channel in
+  Format.fprintf fmt "%s - %s\n" n s;
+  close_out out_channel;
+  CWarnings.create ~name:n ~category:"SMTCoq plugin" Pp.str s
 
 let destruct_rel_decl r = Context.Rel.Declaration.get_name r,
                           Context.Rel.Declaration.get_type r

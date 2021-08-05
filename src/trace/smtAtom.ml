@@ -561,32 +561,44 @@ type atom =
 
 and hatom = atom gen_hashed
 
-(* let pp_acop = function *)
-(*   | CO_xH -> "CO_xH" *)
-(*   | CO_Z0 -> "CO_Z0" *)
+let pp_acop = function
+  | CO_xH -> "CO_xH"
+  | CO_Z0 -> "CO_Z0"
+  | CO_BV bs -> "(CO_BV ??)"
 
-(* let pp_auop = function *)
-(*   | UO_xO -> "UO_xO" *)
-(*   | UO_xI -> "UO_xI" *)
-(*   | UO_Zpos -> "UO_Zpos" *)
-(*   | UO_Zneg -> "UO_Zneg" *)
-(*   | UO_Zopp -> "UO_Zopp" *)
+let pp_auop = function
+  | UO_xO -> "UO_xO"
+  | UO_xI -> "UO_xI"
+  | UO_Zpos -> "UO_Zpos"
+  | UO_Zneg -> "UO_Zneg"
+  | UO_Zopp -> "UO_Zopp"
+  | _ -> "(UO other ??)"
 
-(* let pp_abop = function *)
-(*   | BO_Zplus -> "BO_Zplus" *)
-(*   | BO_Zminus -> "BO_Zminus" *)
-(*   | BO_Zmult -> "BO_Zmult" *)
-(*   | BO_Zlt -> "BO_Zlt" *)
-(*   | BO_Zle -> "BO_Zle" *)
-(*   | BO_Zge -> "BO_Zge" *)
-(*   | BO_Zgt -> "BO_Zgt" *)
-(*   | BO_eq _ -> "(BO_eq ??)" *)
+let pp_abop = function
+  | BO_Zplus -> "BO_Zplus"
+  | BO_Zminus -> "BO_Zminus"
+  | BO_Zmult -> "BO_Zmult"
+  | BO_Zlt -> "BO_Zlt"
+  | BO_Zle -> "BO_Zle"
+  | BO_Zge -> "BO_Zge"
+  | BO_Zgt -> "BO_Zgt"
+  | BO_eq _ -> "(BO_eq ??)"
+  | _ -> "(BO other ??)"
 
-(* let rec pp_atom = function *)
-(*   | Acop c -> "(Acop "^(pp_acop c)^")" *)
-(*   | Auop (u,b) -> "(Auop "^(pp_auop u)^" "^(pp_atom b.hval)^")" *)
-(*   | Abop (b,c,d) -> "(Abop "^(pp_abop b)^" "^(pp_atom c.hval)^" "^(pp_atom d.hval)^")" *)
-(*   | Aapp (op,a) -> "(Aapp "^(string_of_int op.index)^" ("^(Array.fold_left (fun acc h -> acc^" "^(pp_atom h.hval)) "" a)^"))" *)
+let rec pp_atom = function
+  | Acop c -> "(Acop "^(pp_acop c)^")"
+  | Auop (u,b) -> "(Auop "^(pp_auop u)^" "^(pp_atom b.hval)^")"
+  | Abop (b,c,d) -> "(Abop "^(pp_abop b)^" "^(pp_atom c.hval)^" "^(pp_atom d.hval)^")"
+  | Aapp (op,a) -> 
+    let opstr = 
+      match op with 
+      | (Index idx, _) -> "Idx:"^string_of_int idx
+      | (Rel_name r, _) -> "Rel:"^r
+      in 
+    "(Aapp "^opstr^" ("^(Array.fold_left (fun acc h -> acc^" "^(pp_atom h.hval)) "" a)^"))"
+  | Atop (t,x,y,z) -> "(Atop _)"
+  | Anop (n,hatoms) -> "(Anop _)"
+  
 
 module HashedAtom =
   struct
@@ -661,6 +673,8 @@ module Atom =
     let index h = h.index
 
     let equal h1 h2 = h1.index == h2.index
+
+    let pp_atom ha = pp_atom ha.hval
 
     let type_of h =
       match h.hval with
@@ -1097,6 +1111,7 @@ module Atom =
 
 
     exception UnknownUnderForall
+    exception InternalSMTAtom of string
 
     let of_coq ?eqsym:(eqsym=false) rt ro reify known_logic env sigma c =
       let op_tbl = Lazy.force op_tbl in
@@ -1376,7 +1391,7 @@ module Atom =
                           We do not handle it for the moment.
                           We leave for future work to have "dependent" constants.
                         *)
-                       raise UnknownUnderForall
+                       raise (InternalSMTAtom "bar")
             in
             Op.declare ro c targs tres os
         in

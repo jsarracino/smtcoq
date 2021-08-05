@@ -14,3 +14,5 @@ include Translator_sig.S
 
 val ra : SmtAtom.Atom.reify_tbl
 val rf : SmtAtom.Form.reify
+val ra_quant : SmtAtom.Atom.reify_tbl
+val rf_quant : SmtAtom.Form.reify

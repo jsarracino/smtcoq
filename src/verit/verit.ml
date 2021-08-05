@@ -170,7 +170,9 @@ let export out_channel rt ro lsmt =
 exception Unknown
 
 let call_verit _ rt ro ra_quant rf_quant first lsmt =
-  let (filename, outchan) = Filename.open_temp_file "verit_coq" ".smt2" in
+  (* let (filename, outchan) = Filename.open_temp_file "verit_coq" ".smt2" in *)
+  let filename = "verit_coq.smt2" in
+  let outchan = open_out filename in
   export outchan rt ro lsmt;
   close_out outchan;
   let logfilename = Filename.chop_extension filename ^ ".vtlog" in

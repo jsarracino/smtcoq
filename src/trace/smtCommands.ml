@@ -691,8 +691,8 @@ let gen_rel_name =
   fun () -> incr num; "SMTCoqRelName"^(string_of_int !num)
 
 let of_coq_lemma rt ro ra_quant rf_quant env sigma solver_logic clemma =
-  let warn () =
-    CoqInterface.warning "Lemma" ("Discarding the following lemma (unsupported): "^(SmtMisc.string_coq_constr clemma));
+  let warn pref =
+    CoqInterface.warning ("Lemma:"^pref) ("Discarding the following lemma (unsupported): "^(SmtMisc.string_coq_constr clemma));
     None
   in
 
@@ -706,21 +706,25 @@ let of_coq_lemma rt ro ra_quant rf_quant env sigma solver_logic clemma =
     if CoqInterface.eq_constr f (Lazy.force cis_true) then
       match args with
       | [a] -> Some a
-      | _ -> warn ()
+      | _ -> warn "bool"
     else if CoqInterface.eq_constr f (Lazy.force ceq) then
       match args with
-      | [ty; arg1; arg2] when CoqInterface.eq_constr ty (Lazy.force cbool) &&
-                                CoqInterface.eq_constr arg2 (Lazy.force ctrue) ->
-         Some arg1
-      | _ -> warn ()
-    else warn () in
+      | [ty; arg1; arg2] -> Some arg1
+      | _ -> warn "eq"
+    else warn "unmatched" in
   let core_smt =
     match core_f with
       | Some core_f ->
          (try
             Some (Form.of_coq (Atom.of_coq ~eqsym:true rt ro ra_quant solver_logic env_lemma sigma) rf_quant core_f)
           with
-            | Atom.UnknownUnderForall -> warn ()
+            | Atom.UnknownUnderForall -> warn "core"
+            | e -> 
+              let open Form in
+              match e with 
+              | NotWellTyped pf -> warn ("nwt:"^pp_pf pf)
+              | Internal s -> warn ("of_coq internal: " ^ s)
+              | _ -> warn (Printexc.to_string e)
          )
       | None -> None
   in
@@ -856,7 +860,7 @@ let core_tactic_uncheck call_solver solver_logic rt ro ra rf ra_quant rf_quant v
     let open Smtlib2_solver in 
 
     match smt_res with 
-    | Sat -> CoqInterface.error "SMT solver returned unsat"
+    | Sat -> CoqInterface.error "SMT solver returned sat"
     | Unsat -> Tacticals.New.tclIDTAC
 
 let tactic_uncheck call_solver solver_logic rt ro ra rf ra_quant rf_quant vm_cast lcpl lcepl =

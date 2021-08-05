@@ -113,6 +113,8 @@ module Atom :
 
       val equal : t -> t -> bool
 
+      val pp_atom : t -> string
+
       val index : t -> int
 
       val atom : t -> atom

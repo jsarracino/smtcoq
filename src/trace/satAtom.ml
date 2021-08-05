@@ -22,6 +22,8 @@ module Atom =
 
     let equal a1 a2 = a1 == a2
 
+    let pp_atom x = string_of_int x
+
     let is_bool_type a = true
     let is_bv_type a = false
 

@@ -20,6 +20,8 @@ open SmtBtype
 
 let ra = Atom.create ()
 let rf = Form.create ()
+let ra_quant = Atom.create ()
+let rf_quant = Form.create ()
 
 type lit = SmtAtom.Form.t
 
@@ -585,6 +587,8 @@ let register_decl_id name id =
 let clear () =
   Atom.clear ra;
   Form.clear rf;
+  Atom.clear ra_quant;
+  Form.clear rf_quant;
   HCl.clear clauses_ids;
   Hashtbl.clear ids_clauses;
   HT.clear propvars;
