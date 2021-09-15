@@ -91,7 +91,7 @@ Ltac prop2bool :=
         | _ => fail
         end
       | _ => intro
-      end
+      end 
     end.
 
 
@@ -317,7 +317,7 @@ End MultipleCompDec.
 
 (* We can assume that we deal only with monomorphic hypotheses, since
    polymorphism will be removed before *)
-Section Poly.
+(* Section Poly.
   Hypothesis basic : forall (A:Type) (l1 l2:list A),
     length (l1++l2) = (length l1 + length l2)%nat.
   Hypothesis uninterpreted_type : forall (A:Type) (a:A), a = a.
@@ -328,7 +328,7 @@ Section Poly.
     Fail prop2bool_hyp uninterpreted_type.
   Abort.
 
-End Poly.
+End Poly. *)
 
 
 

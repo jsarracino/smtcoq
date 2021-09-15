@@ -26,6 +26,8 @@ type btype =
   | TBV of int
   | TFArray of btype * btype
   | Tindex of indexed_type
+  | TIntList (* intlist *)
+  | TN (* nat *)
 
 val indexed_type_of_int : int -> indexed_type
 

@@ -351,22 +351,23 @@ let call_cvc4 env rt ro ra rf root _ =
   let open Smtlib2_solver in
   let fl = snd root in
 
-  let cvc4 = create [|
-      "cvc4";
-      "--lang"; "smt2";
+  let solver = create [|
+      "z3";
+      |] in
+      (* "--lang"; "smt2";
       "--proof";
       "--no-simplification"; "--fewer-preprocessing-holes";
       "--no-bv-eq"; "--no-bv-ineq"; "--no-bv-algebraic" |] in
 
   set_option cvc4 "print-success" true;
   set_option cvc4 "produce-assignments" true;
-  set_option cvc4 "produce-proofs" true;
-  set_logic cvc4 (string_logic ro fl);
+  set_option cvc4 "produce-proofs" true; *)
+  set_logic solver (string_logic ro fl);
 
   List.iter (fun (i,t) ->
     let s = "Tindex_"^(string_of_int i) in
     SmtMaps.add_btype s (SmtBtype.Tindex t);
-    declare_sort cvc4 s 0;
+    declare_sort solver s 0;
   ) (SmtBtype.to_list rt);
   
   List.iter (fun (i,cod,dom,op) ->
@@ -376,30 +377,30 @@ let call_cvc4 env rt ro ra rf root _ =
       Array.fold_right
         (fun t acc -> asprintf "%a" SmtBtype.to_smt t :: acc) cod [] in
     let ret = asprintf "%a" SmtBtype.to_smt dom in
-    declare_fun cvc4 s args ret
+    declare_fun solver s args ret
   ) (Op.to_list ro);
 
-  assume cvc4 (asprintf "%a" (Form.to_smt ~debug:false) fl);
+  assume solver (asprintf "%a" (Form.to_smt ~debug:false) fl);
 
   let proof =
-    match check_sat cvc4 with
+    match check_sat solver with
     | Unsat ->
       begin
-        try get_proof cvc4 (import_trace (Some root) lfsc_parse_one)
+        try get_proof solver (import_trace (Some root) lfsc_parse_one)
         with
         | Ast.CVC4Sat -> CoqInterface.error "CVC4 returned SAT"
         | No_proof -> CoqInterface.error "CVC4 did not generate a proof"
         | Failure s -> CoqInterface.error ("Importing of proof failed: " ^ s)
       end
     | Sat ->
-      let smodel = get_model cvc4 in
+      let smodel = get_model solver in
       CoqInterface.error
         ("CVC4 returned sat. Here is the model:\n\n" ^
          SmtCommands.model_string env rt ro ra rf smodel)
         (* (asprintf "CVC4 returned sat. Here is the model:\n%a" SExpr.print smodel) *)
   in
 
-  quit cvc4;
+  quit solver;
   proof
 
 

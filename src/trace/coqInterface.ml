@@ -196,6 +196,20 @@ let warning n s =
   close_out out_channel;
   CWarnings.create ~name:n ~category:"SMTCoq plugin" Pp.str s
 
+let notice n s = 
+  let out_channel = open_out "notice.out" in 
+  let fmt = Format.formatter_of_out_channel out_channel in
+  Format.fprintf fmt "%s - %s\n" n s;
+  close_out out_channel;
+  Feedback.msg_notice @@ Pp.str s
+
+let debug n s = 
+  let out_channel = open_out "debug.out" in 
+  let fmt = Format.formatter_of_out_channel out_channel in
+  Format.fprintf fmt "%s - %s\n" n s;
+  close_out out_channel;
+  Feedback.msg_debug @@ Pp.str s
+
 let destruct_rel_decl r = Context.Rel.Declaration.get_name r,
                           Context.Rel.Declaration.get_type r
 

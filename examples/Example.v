@@ -18,18 +18,28 @@
 Require Import SMTCoq.SMTCoq.
 Require Import Bool.
 
-Require Import ZArith.
 
-Import BVList.BITVECTOR_LIST.
-Local Open Scope bv_scope.
+Goal forall b1 b2 b3, b1 && b2 || b3 -> b3 || b2 || b1.
+Proof.
+  smt_uncheck; admit.
+Admitted.
 
-Import FArray.
-Local Open Scope farray_scope.
+Goal (forall b1 b2, b1 = true) = False.
+Proof.
+  prop2bool.
 
-(* Local Open Scope int63_scope. *)
-Local Open Scope Z_scope.
 
-Require Import Setoid.
+Require Import BinInt.
+
+Lemma foo: 
+  forall (x : Z), 
+    ((forall (y: Z), (x = y + 1 /\ y = 0) -> False) -> 
+    x = 1)%Z.
+Proof.
+  smt_uncheck; admit.
+Admitted.
+
+Require Import 
 
 Goal forall (b b': bitvector 2),
     (forall b'': bitvector 2, b'' = #b|0|0|) ->

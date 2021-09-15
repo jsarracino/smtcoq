@@ -45,6 +45,7 @@ type uop =
    | UO_Zpos
    | UO_Zneg
    | UO_Zopp
+   | UO_ILlen
    | UO_BVbitOf of int * int
    | UO_BVnot of int
    | UO_BVneg of int
@@ -126,6 +127,7 @@ module Op =
     let u_to_coq = function
       | UO_xO -> Lazy.force cUO_xO
       | UO_xI -> Lazy.force cUO_xI
+      | UO_ILlen -> cil_len
       | UO_Zpos -> Lazy.force cUO_Zpos
       | UO_Zneg -> Lazy.force cUO_Zneg
       | UO_Zopp -> Lazy.force cUO_Zopp
@@ -140,6 +142,7 @@ module Op =
       | UO_xO | UO_xI -> SmtBtype.Tpositive
       | UO_Zpos | UO_Zneg | UO_Zopp -> SmtBtype.TZ
       | UO_BVbitOf _ -> SmtBtype.Tbool
+      | UO_ILlen -> SmtBtype.TN
       | UO_BVnot s | UO_BVneg s -> SmtBtype.TBV s
       | UO_BVextr (_, n, _) -> SmtBtype.TBV n
       | UO_BVzextn (s, n) | UO_BVsextn (s, n) -> SmtBtype.TBV (s + n)
@@ -147,6 +150,7 @@ module Op =
     let u_type_arg = function
       | UO_xO | UO_xI | UO_Zpos | UO_Zneg -> SmtBtype.Tpositive
       | UO_Zopp -> SmtBtype.TZ
+      | UO_ILlen -> SmtBtype.TIntList
       | UO_BVbitOf (s,_) -> SmtBtype.TBV s
       | UO_BVnot s | UO_BVneg s -> SmtBtype.TBV s
       | UO_BVextr (_, _, s) -> SmtBtype.TBV s
@@ -159,6 +163,7 @@ module Op =
       | UO_Zpos -> Lazy.force cZpos
       | UO_Zneg -> Lazy.force cZneg
       | UO_Zopp -> Lazy.force copp
+      | UO_ILlen -> cil_len
       | UO_BVbitOf (s,i) -> mklApp cbitOf [|mkN s; mkNat i|]
       | UO_BVnot s -> mklApp cbv_not [|mkN s|]
       | UO_BVneg s -> mklApp cbv_neg [|mkN s|]
@@ -289,6 +294,8 @@ module Op =
     let interp_eq t_i = function
       | SmtBtype.TZ -> Lazy.force ceqbZ
       | SmtBtype.Tbool -> Lazy.force ceqb
+      | SmtBtype.TIntList -> cil_eqb
+      | SmtBtype.TN -> n_eqb
       | SmtBtype.Tpositive -> Lazy.force ceqbP
       | SmtBtype.TBV s -> mklApp cbv_eq [|mkN s|]
       | SmtBtype.Tindex i ->
@@ -432,6 +439,7 @@ module Op =
       | UO_BVextr (s, n0, n1) -> (s land n0 land n1) lxor 8
       | UO_BVzextn (s, n) -> (s land n) lxor 9
       | UO_BVsextn (s, n) -> (s land n) lxor 10
+      | UO_ILlen -> 11
 
     let b_equal op1 op2 =
       match op1,op2 with
@@ -500,6 +508,7 @@ module Op =
     let logic_of_uop = function
       | UO_xO | UO_xI
       | UO_Zpos | UO_Zneg | UO_Zopp -> SL.singleton LLia
+      | UO_ILlen
       | UO_BVbitOf _ | UO_BVnot _ | UO_BVneg _
       | UO_BVextr _ | UO_BVzextn _ | UO_BVsextn _ -> SL.singleton LBitvectors
 
@@ -701,6 +710,7 @@ module Atom =
           | UO_xI -> 2*(compute_hint h) + 1
           | UO_Zpos -> compute_hint h
           | UO_Zneg -> - (compute_hint h)
+          | UO_ILlen
           | UO_Zopp | UO_BVbitOf _
           | UO_BVnot _ | UO_BVneg _
           | UO_BVextr _ | UO_BVzextn _ | UO_BVsextn _ -> assert false)
@@ -992,6 +1002,7 @@ module Atom =
       | CCeqbZ                  (* Equality on Z *)
       | CCeqbBV                 (* Equality on bit vectors *)
       | CCeqbA                  (* Equality on arrays *)
+      | CCeqIntList             (* Equality on IntLists *)
       | CCeqbU                  (* Equality on uninterpreted types *)
       | CCselect
       | CCdiff
@@ -1043,6 +1054,7 @@ module Atom =
       (* | CCeqbA -> SL.singleton LArrays *)
 
       | CCeqbP | CCeqbZ | CCeqbBV | CCeqbA | CCeqbU
+      | CCeqIntList
       | CCunknown | CCunknown_deps _  -> SL.singleton LUF
 
 
@@ -1087,6 +1099,7 @@ module Atom =
           cbv_add, CCBVadd; cbv_mult, CCBVmult;
           cbv_ult, CCBVult; cbv_slt, CCBVslt; cbv_concat, CCBVconcat;
           cbv_shl, CCBVshl; cbv_shr, CCBVshr;
+          lazy cil_eqb, CCeqIntList;
           ceqb,CCeqb; ceqbP,CCeqbP; ceqbZ, CCeqbZ; cbv_eq, CCeqbBV; ceqb_of_compdec, CCeqbU;
           cselect, CCselect; cdiff, CCdiff;
           cstore, CCstore;
@@ -1165,7 +1178,8 @@ module Atom =
         | CCselect -> mk_bop_select args
         | CCdiff -> mk_bop_diff args
         | CCstore -> mk_top_store args
-	| CCunknown -> mk_unknown c args (CoqInterface.retyping_get_type_of env sigma h)
+        | CCeqIntList
+	      | CCunknown -> mk_unknown c args (CoqInterface.retyping_get_type_of env sigma h)
         | CCunknown_deps gobble ->
           mk_unknown_deps c args (CoqInterface.retyping_get_type_of env sigma h) gobble
 

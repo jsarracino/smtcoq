@@ -45,6 +45,8 @@ type btype =
   | TBV of int
   | TFArray of btype * btype
   | Tindex of indexed_type
+  | TIntList
+  | TN
 
 let index_tbl = Hashtbl.create 17
 
@@ -75,30 +77,34 @@ module HashedBtype : Hashtbl.HashedType with type t = btype = struct
     | TBV s -> s lxor 4
     | TFArray (t1, t2) -> ((((hash t1) lsl 3) land (hash t2)) lsl 3) lxor 5
     | Tindex i -> (i.index lsl 3) lxor 6
+    | TIntList -> 7
+    | TN -> 8
 end
 
 let rec to_coq = function
   | TZ -> Lazy.force cTZ
   | Tbool -> Lazy.force cTbool
   | Tpositive -> Lazy.force cTpositive
+  | TN -> Lazy.force cN
   | TBV n -> mklApp cTBV [|mkN n|]
   | Tindex i -> index_to_coq i.index
   | TFArray (ti, te) ->
      mklApp cTFArray [|to_coq ti; to_coq te|]
+  | TIntList -> Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.t", Univ.Instance.empty)
 
 let rec to_smt fmt = function
-  | TZ -> Format.fprintf fmt "Int"
+  | TZ | TN | Tpositive -> Format.fprintf fmt "Int"
   | Tbool -> Format.fprintf fmt "Bool"
-  | Tpositive -> Format.fprintf fmt "Int"
   | TBV i -> Format.fprintf fmt "(_ BitVec %i)" i
   | Tindex i -> Format.fprintf fmt "Tindex_%i" i.index
   | TFArray (ti, te) ->
      Format.fprintf fmt "(Array %a %a)" to_smt ti to_smt te
+  | TIntList -> Format.fprintf fmt "IntList"
 
 let rec logic = function
-  | TZ | Tpositive -> SL.singleton LLia
+  | TZ | Tpositive | TN -> SL.singleton LLia
   | Tbool -> SL.empty
-  | TBV _ -> SL.singleton LBitvectors
+  | TBV _ | TIntList -> SL.singleton LBitvectors
   | Tindex _ -> SL.singleton LUF
   | TFArray (ti, te) -> SL.add LArrays (SL.union (logic ti) (logic te))
 
@@ -186,6 +192,7 @@ let inh_interp t_i t =
 let rec interp t_i = function
   | TZ -> Lazy.force cZ
   | Tbool -> Lazy.force cbool
+  | TN -> Lazy.force cN
   | Tpositive -> Lazy.force cpositive
   | TBV n -> mklApp cbitvector [|mkN n|]
   | Tindex c ->
@@ -197,6 +204,7 @@ let rec interp t_i = function
   | TFArray (ti,te) ->
      mklApp cfarray [| interp t_i ti; interp t_i te;
                        ord_interp t_i ti; inh_interp t_i te |]
+  | TIntList -> Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.t", Univ.Instance.empty)
 
 
 let interp_to_coq reify t = interp (make_t_i reify) t
@@ -231,6 +239,8 @@ let check_known ty known_logic =
 
 let rec compdec_btype reify = function
   | Tbool -> Lazy.force cbool_compdec
+  | TIntList -> Lazy.force cbool_compdec (* TODO *)
+  | TN -> cnat_compdec
   | TZ -> Lazy.force cZ_compdec
   | Tpositive -> Lazy.force cPositive_compdec
   | TBV s -> mklApp cBV_compdec [|mkN s|]
@@ -270,6 +280,8 @@ let rec of_coq reify known_logic t =
     else if CoqInterface.eq_constr c (Lazy.force cZ) ||
               CoqInterface.eq_constr c (Lazy.force cTZ) then
       check_known TZ known_logic
+  else if CoqInterface.eq_constr c (Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.t", Univ.Instance.empty)) then
+      check_known TIntList known_logic
     else if CoqInterface.eq_constr c (Lazy.force cpositive) ||
               CoqInterface.eq_constr c (Lazy.force cTpositive) then
       check_known Tpositive known_logic

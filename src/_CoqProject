@@ -29,12 +29,15 @@
 -I verit
 -I zchaff
 -I Array
+-I list
 -I ../3rdparty/alt-ergo
 
 Array/PArray.v
 
 bva/BVList.v
 bva/Bva_checker.v
+
+list/Syntax.v
 
 classes/SMT_classes.v
 classes/SMT_classes_instances.v

@@ -50,6 +50,9 @@ let cNpos = gen_constant positive_modules "Npos"
 
 let cof_nat = gen_constant n_modules "of_nat"
 
+let n_eqb = (Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.N.eqb", Univ.Instance.empty))
+
+
 
 (* Z *)
 let z_modules = [["Coq";"Numbers";"BinNums"];
@@ -93,6 +96,9 @@ let cnil = gen_constant CoqInterface.init_modules "nil"
 let ccons = gen_constant CoqInterface.init_modules "cons"
 let clength = gen_constant CoqInterface.init_modules "length"
 
+let cil_eqb = (Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.eqb", Univ.Instance.empty))
+
+
 (* Option *)
 let coption = gen_constant CoqInterface.init_modules "option"
 let cSome = gen_constant CoqInterface.init_modules "Some"
@@ -117,6 +123,8 @@ let ceq = gen_constant CoqInterface.init_modules "eq"
 let crefl_equal = gen_constant CoqInterface.init_modules "eq_refl"
 let cconj = gen_constant CoqInterface.init_modules "conj"
 let cand = gen_constant CoqInterface.init_modules "and"
+
+let cil_len = (Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.len", Univ.Instance.empty))
 
 (* Bit vectors *)
 let bv_modules = [["SMTCoq";"bva";"BVList";"BITVECTOR_LIST"]]
@@ -197,6 +205,9 @@ let cte_carrier = gen_constant classes_modules "te_carrier"
 let cte_compdec = gen_constant classes_modules "te_compdec"
 let ceqb_of_compdec = gen_constant classes_modules "eqb_of_compdec"
 let cCompDec = gen_constant classes_modules "CompDec"
+
+let cnat_compdec = (Constr.mkRef (Coqlib.lib_ref "num.nat.eq_dec", Univ.Instance.empty))
+let cil_compdec = (Constr.mkRef (Coqlib.lib_ref "SMTCoq.Syntax.BasicList.eq_dec", Univ.Instance.empty))
 
 let cbool_compdec = gen_constant classes_modules "bool_compdec"
 let cZ_compdec = gen_constant classes_modules "Z_compdec"

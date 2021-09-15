@@ -25,6 +25,7 @@ type uop =
    | UO_Zpos
    | UO_Zneg
    | UO_Zopp
+   | UO_ILlen
    | UO_BVbitOf of int * int
    | UO_BVnot of int
    | UO_BVneg of int

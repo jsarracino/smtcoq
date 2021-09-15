@@ -36,6 +36,7 @@ val cN : CoqInterface.constr lazy_t
 val cN0 : CoqInterface.constr lazy_t
 val cNpos : CoqInterface.constr lazy_t
 val cof_nat : CoqInterface.constr lazy_t
+val n_eqb : CoqInterface.constr
 
 (* Z *)
 val cZ : CoqInterface.constr lazy_t
@@ -72,6 +73,8 @@ val cnil : CoqInterface.constr lazy_t
 val ccons : CoqInterface.constr lazy_t
 val clength : CoqInterface.constr lazy_t
 
+val cil_eqb : CoqInterface.constr
+
 (* Option *)
 val coption : CoqInterface.constr lazy_t
 val cSome : CoqInterface.constr lazy_t
@@ -90,6 +93,9 @@ val ceq : CoqInterface.constr lazy_t
 val crefl_equal : CoqInterface.constr lazy_t
 val cconj : CoqInterface.constr lazy_t
 val cand : CoqInterface.constr lazy_t
+
+(* lists *)
+val cil_len : CoqInterface.constr 
 
 (* Bit vectors *)
 val cbitvector : CoqInterface.constr lazy_t
@@ -150,6 +156,9 @@ val cte_carrier : CoqInterface.constr lazy_t
 val cte_compdec : CoqInterface.constr lazy_t
 val ceqb_of_compdec : CoqInterface.constr lazy_t
 val cCompDec : CoqInterface.constr lazy_t
+
+val cnat_compdec : CoqInterface.constr
+val cil_compdec : CoqInterface.constr
 
 val cbool_compdec : CoqInterface.constr lazy_t
 val cZ_compdec : CoqInterface.constr lazy_t
